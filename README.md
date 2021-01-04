@@ -1,11 +1,11 @@
-## soft-mock
+# soft-mock
 
-### 介绍
+## 介绍
 
 soft-mock 是一个融合了类似 charles 的代理功能，深耕前端 mock 方面。简化在前端开发过程中的 mock 复杂度。
 soft-mock 的核心部分是使用 python3.7 来开发，接口文档部分是使用 react 开发
 
-### 快速上手
+## 快速上手
 
 #### 安装
 
