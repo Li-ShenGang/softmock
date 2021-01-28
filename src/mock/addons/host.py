@@ -1,6 +1,14 @@
+from mitmproxy.net.http import response
 import mitmproxy.http
+import sqlite3
+import json
 from mitmproxy import ctx
+from urllib import parse
 from functools import wraps
+
+null = None
+false = False
+undefined = None
 
 
 class Host:
@@ -23,9 +31,36 @@ class Host:
         self.sentry(flow)
 
     def sentry(self, flow):
-        return
+        url = flow.request.scheme + '://' + flow.request.host + flow.request.path
+        db = sqlite3.connect("soft_mock.db")
+        cursor = db.cursor()
+        sql = f"select * from Mock1 where url='{url}' and status='1'"
+        result = cursor.execute(sql)
+        js = [i for i in cursor.execute(sql)]
+        if len(js) > 0:
+            print(js[0])
+            result = json.loads(parse.unquote(js[0][1]))
+            html = result['data'].get(
+                'response', None)
+            # flow.response = result['data']['response']
+            response = result['data']['response']
+            headers = {}
+            try:
+                for header in response['headers']:
+                    headers[header[0]] = header[1]
+            except:
+                pass
+            flow.response = mitmproxy.http.HTTPResponse.make(
+                response['status_code'],  # (optional) status code
+                response['html'],  # (optional) content
+                headers  # (optional) headers
+            )
+
+        cursor.close()
+        db.close()
 
     @exclude_host
     def response(self, flow: mitmproxy.http.HTTPFlow):
-        text = flow.response.get_text()
-        flow.response.set_text('this_a_page')
+        pass
+        # text = flow.response.get_text()
+        # flow.response.set_text('this_a_page')

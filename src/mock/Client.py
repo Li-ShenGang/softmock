@@ -15,7 +15,7 @@ class Proxy:
         self.conn = sqlite3.connect("soft_mock.db")
         cursor = self.conn.cursor()
         try:
-            sql = "create table Mock (id varchar(100) primary key, detail TEXT, url TEXT)"
+            sql = "create table Mock1 (id varchar(100) primary key, detail TEXT, url TEXT, status Text)"
             cursor.execute(sql)
             sql = "create table Html (url varchar(100) primary key, filepath TEXT)"
             cursor.execute(sql)

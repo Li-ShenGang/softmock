@@ -5,9 +5,11 @@ import logging
 import os.path
 import sqlite3
 import re
+import base64
 from io import BytesIO
 from typing import ClassVar, Optional
 from pyparsing import Keyword
+from urllib import parse
 
 import tornado.escape
 import tornado.web
@@ -96,7 +98,6 @@ def flow_to_json(flow: mitmproxy.flow.Flow) -> dict:
                 content_hash = None
                 html = None
 
-            print(html)
             f["response"] = {
                 "http_version": flow.response.http_version,
                 "status_code": flow.response.status_code,
@@ -150,6 +151,10 @@ class RequestHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
         super().set_default_headers()
         self.set_header("Server", version.MITMPROXY)
+        # 允许跨域
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
         self.set_header("X-Frame-Options", "DENY")
         self.add_header("X-XSS-Protection", "1; mode=block")
         self.add_header("X-Content-Type-Options", "nosniff")
@@ -230,6 +235,23 @@ class WebSocketEventBroadcaster(tornado.websocket.WebSocketHandler):
     def on_close(self):
         self.connections.remove(self)
 
+    def set_default_headers(self):
+        super().set_default_headers()
+        self.set_header("Server", version.MITMPROXY)
+        # 允许跨域
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        # self.set_header("X-Frame-Options", "DENY")
+        # self.add_header("X-XSS-Protection", "1; mode=block")
+        # self.add_header("X-Content-Type-Options", "nosniff")
+        # self.add_header(
+        #     "Content-Security-Policy",
+        #     "default-src 'self'; "
+        #     "connect-src 'self' ws:; "
+        #     "style-src   'self' 'unsafe-inline'"
+        # )
+
     @classmethod
     def broadcast(cls, **kwargs):
         if kwargs['resource'] != "flows":
@@ -244,35 +266,40 @@ class WebSocketEventBroadcaster(tornado.websocket.WebSocketHandler):
         msg_id = kwargs['data']['id']  # 消息id
         msg_type = kwargs['cmd']  # 记录到数据库的类型
         req = kwargs['data']['request']
+        is_update_response = False if not kwargs['data'].get(
+            'response', None) else True if kwargs['data']['response'].get('html', None) else False
         url = req['scheme'] + '://' + req['host'] + req['path'].split('?')[0]
         db = sqlite3.connect("soft_mock.db")
         cursor = db.cursor()
-        sql = f"select count(*) from Mock where url='{url}'"
+        sql = f"select count(*) from Mock1 where url='{url}'"
         if [i for i in cursor.execute(sql)][0][0]:  # 已经存在记录，更新记录
             """
             已经存在记录，则不需要返回新的id，直接把旧的id返回去
             """
-            sql = f"select detail from Mock where url='{url}'"
+            sql = f"select detail from Mock1 where url='{url}'"
             js = [i for i in cursor.execute(sql)][0][0]
-            result = json.loads(js)
+            result = json.loads(parse.unquote(js))
             kwargs['data']['id'] = result['data']['id']
             kwargs['cmd'] = 'update'
-            message = json.dumps(kwargs, ensure_ascii=False).encode(
-                "utf8", "surrogateescape")
-            sql = f"update Mock set detail='{message.decode()}' where url='{url}'"
+            if not is_update_response:
+                kwargs['data']['response'] = result['data'].get(
+                    'response', None)
+            message = parse.quote(json.dumps(kwargs, ensure_ascii=False))
+            sql = f"update Mock1 set detail=? where url=?"
+            cursor.execute(sql, (message, url))
         else:  # 新增记录
-            message = json.dumps(kwargs, ensure_ascii=False).encode(
-                "utf8", "surrogateescape")
-            sql = f"insert into Mock (id, detail, url) values ('{msg_id}', '{message.decode()}', '{url}')"
+            message = parse.quote(json.dumps(kwargs, ensure_ascii=False))
+            sql = f"insert into Mock1 (id, detail, url, status) values (?, ?, ?, ?)"
+            cursor.execute(
+                sql, (msg_id, message, url, 1))
 
-        cursor.execute(sql)
         db.commit()
         cursor.close()
         db.close()
 
         for conn in cls.connections:
             try:
-                conn.write_message(message)
+                conn.write_message(parse.unquote(message))
             except Exception:  # pragma: no cover
                 # logging.error("Error sending message", exc_info=True)
                 pass
@@ -289,8 +316,9 @@ class Flows(RequestHandler):
         # 获取历史记录
         db = sqlite3.connect("soft_mock.db")
         cursor = db.cursor()
-        sql = f"select * from Mock"
-        result = [json.loads(i[1])['data'] for i in cursor.execute(sql)]
+        sql = f"select * from Mock1"
+        result = [{**json.loads(parse.unquote(i[1]))['data'], "status": parse.unquote(i[3])}
+                  for i in cursor.execute(sql)]
         self.write(result)
         cursor.close()
         db.close()
@@ -349,6 +377,56 @@ class KillFlow(RequestHandler):
         if self.flow.killable:
             self.flow.kill()
             self.view.update([self.flow])
+
+
+class DeleteFlow(RequestHandler):
+    def post(self):
+        '''
+        删除记录
+        '''
+        url = base64.b64decode(self.get_argument('url').encode()).decode()
+        db = sqlite3.connect("soft_mock.db")
+        cursor = db.cursor()
+        sql = f"delete from Mock1 where url='{url}'"
+        cursor.execute(sql)
+        db.commit()
+        cursor.close()
+        db.close()
+        self.write('0')
+
+
+class UpdateFlow(RequestHandler):
+    def post(self):
+        '''
+        更新在网页端修改的值
+        '''
+        url = base64.b64decode(self.get_argument('url').encode()).decode()
+        status = self.get_argument('status')
+        detail = self.request.body.decode()
+        db = sqlite3.connect("soft_mock.db")
+        cursor = db.cursor()
+        sql = f"update Mock1 set detail='{parse.quote(detail)}', status='{status}' where url='{url}'"
+        cursor.execute(sql)
+        db.commit()
+        cursor.close()
+        db.close()
+        self.write('0')
+
+
+class UpdateStatus():
+    def post(self):
+        '''
+        更新监听状态
+        '''
+        url = base64.b64decode(self.get_argument('url').encode()).decode()
+        status = self.get_argument('status')
+        db = sqlite3.connect("soft_mock.db")
+        cursor = db.cursor()
+        sql = f"update Mock1 set status='{status}' where url='{url}'"
+        cursor.execute(sql)
+        db.commit()
+        cursor.close()
+        self.write('0')
 
 
 class FlowHandler(RequestHandler):
@@ -569,7 +647,7 @@ class Application(tornado.web.Application):
             default_host="dns-rebind-protection",
             template_path=os.path.join(os.path.dirname(__file__), "templates"),
             static_path=os.path.join(os.path.dirname(__file__), "static"),
-            xsrf_cookies=True,
+            xsrf_cookies=False,
             cookie_secret=os.urandom(256),
             debug=False,
             autoreload=False,
@@ -588,6 +666,9 @@ class Application(tornado.web.Application):
                 (r"/flows/dump", DumpFlows),
                 (r"/flows/resume", ResumeFlows),
                 (r"/flows/kill", KillFlows),
+                (r"/update_flow", UpdateFlow),
+                (r"/delete_flow", DeleteFlow),
+                (r"/update_status", UpdateStatus),
                 (r"/flows/(?P<flow_id>[0-9a-f\-]+)", FlowHandler),
                 (r"/flows/(?P<flow_id>[0-9a-f\-]+)/resume", ResumeFlow),
                 (r"/flows/(?P<flow_id>[0-9a-f\-]+)/kill", KillFlow),
