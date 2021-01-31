@@ -2,3 +2,4 @@
 soft_mock.db
 __pycache__
 clear.py
+.DS_Store
