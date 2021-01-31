@@ -223,6 +223,9 @@ class IndexHandler(RequestHandler):
         assert token
         self.render("index.html")
 
+class Manifest(RequestHandler):
+    def get(self):
+        self.render("manifest.json")
 
 class FilterHelp(RequestHandler):
     def get(self):
@@ -678,6 +681,7 @@ class Application(tornado.web.Application):
             r'^(localhost|[0-9.]+|\[[0-9a-fA-F:]+\])$',
             [
                 (r"/", IndexHandler),
+                (r"/manifest.json", Manifest),
                 (r"/filter-help(?:\.json)?", FilterHelp),
                 (r"/updates", ClientConnection),
                 (r"/events(?:\.json)?", Events),
