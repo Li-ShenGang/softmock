@@ -1,0 +1,3 @@
+*.pyc
+soft_mock.db
+__pycache__
