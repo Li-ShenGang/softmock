@@ -10,6 +10,7 @@ from io import BytesIO
 from typing import ClassVar, Optional
 from pyparsing import Keyword
 from urllib import parse
+from cchardet import detect
 
 import tornado.escape
 import tornado.web
@@ -67,12 +68,17 @@ def flow_to_json(flow: mitmproxy.flow.Flow) -> dict:
             else:
                 content_length = None
                 content_hash = None
+            try:
+                raw_content = flow.request.raw_content.decode()
+            except:
+                raw_content = ""
             f["request"] = {
                 "method": flow.request.method,
                 "scheme": flow.request.scheme,
                 "host": flow.request.host,
                 "port": flow.request.port,
                 "path": flow.request.path,
+                "raw_content": raw_content,
                 "http_version": flow.request.http_version,
                 "headers": tuple(flow.request.headers.items(True)),
                 "contentLength": content_length,
@@ -291,7 +297,7 @@ class WebSocketEventBroadcaster(tornado.websocket.WebSocketHandler):
             message = parse.quote(json.dumps(kwargs, ensure_ascii=False))
             sql = f"insert into Mock1 (id, detail, url, status) values (?, ?, ?, ?)"
             cursor.execute(
-                sql, (msg_id, message, url, 1))
+                sql, (msg_id, message, url, '1'))
 
         db.commit()
         cursor.close()
@@ -316,7 +322,7 @@ class Flows(RequestHandler):
         # 获取历史记录
         db = sqlite3.connect("soft_mock.db")
         cursor = db.cursor()
-        sql = f"select * from Mock1"
+        sql = f"select * from Mock1 where url like '%{ctx.options.host}%'"
         result = [{**json.loads(parse.unquote(i[1]))['data'], "status": parse.unquote(i[3])}
                   for i in cursor.execute(sql)]
         self.write(result)
@@ -349,6 +355,19 @@ class ClearAll(RequestHandler):
     def post(self):
         self.view.clear()
         self.master.events.clear()
+
+
+class SOFTMOCK_ClearAll(RequestHandler):
+    def post(self):
+        db = sqlite3.connect("soft_mock.db")
+        cursor = db.cursor()
+        sql = f"delete from Mock1 where url like '%{ctx.options.host}%'"
+
+        cursor.execute(sql)
+        db.commit()
+        cursor.close()
+        db.close()
+        self.write('0')
 
 
 class ResumeFlows(RequestHandler):
@@ -668,6 +687,7 @@ class Application(tornado.web.Application):
                 (r"/flows/kill", KillFlows),
                 (r"/update_flow", UpdateFlow),
                 (r"/delete_flow", DeleteFlow),
+                (r"/clear_all", SOFTMOCK_ClearAll),
                 (r"/update_status", UpdateStatus),
                 (r"/flows/(?P<flow_id>[0-9a-f\-]+)", FlowHandler),
                 (r"/flows/(?P<flow_id>[0-9a-f\-]+)/resume", ResumeFlow),

@@ -28,22 +28,21 @@ class Host:
     @exclude_host
     def request(self, flow: mitmproxy.http.HTTPFlow):
         ctx.log.info("访问" + self.host)
-        self.sentry(flow)
-
-    def sentry(self, flow):
-        url = flow.request.scheme + '://' + flow.request.host + flow.request.path
+        url = flow.request.scheme + '://' + \
+            flow.request.host + flow.request.path.split('?')[0]
         db = sqlite3.connect("soft_mock.db")
         cursor = db.cursor()
         sql = f"select * from Mock1 where url='{url}' and status='1'"
         result = cursor.execute(sql)
         js = [i for i in cursor.execute(sql)]
         if len(js) > 0:
-            print(js[0])
             result = json.loads(parse.unquote(js[0][1]))
             html = result['data'].get(
                 'response', None)
             # flow.response = result['data']['response']
-            response = result['data']['response']
+            response = result['data'].get('response', None)
+            if not response:
+                return None
             headers = {}
             try:
                 for header in response['headers']:
