@@ -60,12 +60,15 @@ class RequestReplayThread(basethread.BaseThread):
             if not f.response:
                 # In all modes, we directly connect to the server displayed
                 if self.options.mode.startswith("upstream:"):
-                    server_address = server_spec.parse_with_mode(self.options.mode)[1].address
+                    server_address = server_spec.parse_with_mode(self.options.mode)[
+                        1].address
                     server = connections.ServerConnection(server_address)
                     server.connect()
                     if r.scheme == "https":
-                        connect_request = http.make_connect_request((r.data.host, r.port))
-                        server.wfile.write(http1.assemble_request(connect_request))
+                        connect_request = http.make_connect_request(
+                            (r.data.host, r.port))
+                        server.wfile.write(
+                            http1.assemble_request(connect_request))
                         server.wfile.flush()
                         resp = http1.read_response(
                             server.rfile,
@@ -102,7 +105,8 @@ class RequestReplayThread(basethread.BaseThread):
                     f.server_conn.close()
                 f.server_conn = server
 
-                f.response = http1.read_response(server.rfile, r, body_size_limit=bsl)
+                f.response = http1.read_response(
+                    server.rfile, r, body_size_limit=bsl)
             response_reply = self.channel.ask("response", f)
             if response_reply == exceptions.Kill:
                 raise exceptions.Kill()
@@ -110,7 +114,8 @@ class RequestReplayThread(basethread.BaseThread):
             f.error = flow.Error(str(e))
             self.channel.ask("error", f)
         except exceptions.Kill:
-            self.channel.tell("log", log.LogEntry(flow.Error.KILLED_MESSAGE, "info"))
+            self.channel.tell("log", log.LogEntry(
+                flow.Error.KILLED_MESSAGE, "info"))
         except Exception as e:
             self.channel.tell("log", log.LogEntry(repr(e), "error"))
         finally:
@@ -127,6 +132,7 @@ class ClientPlayback:
         self.thread: RequestReplayThread = None
 
     def check(self, f: flow.Flow):
+        return None
         if f.live:
             return "Can't replay live flow."
         if f.intercepted:
@@ -192,16 +198,16 @@ class ClientPlayback:
             hf = typing.cast(http.HTTPFlow, f)
 
             err = self.check(hf)
-            if err:
-                ctx.log.warn(err)
-                continue
+            # if err:
+            #     ctx.log.warn(err)
+            #     continue
 
             lst.append(hf)
             # Prepare the flow for replay
-            hf.backup()
+            # hf.backup()
             hf.is_replay = "request"
             hf.response = None
-            hf.error = None
+            # hf.error = None
             # https://github.com/mitmproxy/mitmproxy/issues/2197
             if hf.request.http_version == "HTTP/2.0":
                 hf.request.http_version = "HTTP/1.1"

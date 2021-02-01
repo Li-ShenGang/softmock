@@ -25,3 +25,4 @@ psutil==5.8.0
 pydivert==2.1.0
 pyOpenSSL==20.0.1
 ruamel.base==1.0.0
+requests==2.24.0

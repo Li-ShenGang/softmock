@@ -27,6 +27,7 @@ from mitmproxy import log
 from mitmproxy import optmanager
 from mitmproxy import version
 from mitmproxy import ctx
+from .replay import proxy_req
 
 
 def flow_to_json(flow: mitmproxy.flow.Flow) -> dict:
@@ -560,6 +561,24 @@ class ReplayFlow(RequestHandler):
             raise APIError(400, str(e))
 
 
+class ReplayMe(RequestHandler):
+    def post(self):
+        url = base64.b64decode(self.get_argument('url').encode()).decode()
+
+        db = sqlite3.connect("soft_mock.db")
+        cursor = db.cursor()
+        sql = f"select `detail` from Mock1 where url='{url}'"
+        js = [i for i in cursor.execute(sql)][0][0]
+        result = json.loads(parse.unquote(js))
+        # result['data']['response'] = None
+        update_result = proxy_req(result, self.get_argument('url'))
+        sql2 = f"update Mock1 set `detail`='{parse.quote(json.dumps(update_result))}' where url='{url}'"
+        cursor.execute(sql2)
+        db.commit()
+        cursor.close()
+        self.write('0')
+
+
 class FlowContent(RequestHandler):
     def post(self, flow_id, message):
         self.flow.backup()
@@ -716,6 +735,7 @@ class Application(tornado.web.Application):
                 (r"/update_flow", UpdateFlow),
                 (r"/delete_flow", DeleteFlow),
                 (r"/clear_all", SOFTMOCK_ClearAll),
+                (r"/replay", ReplayMe),
                 (r"/update_status", UpdateStatus),
                 (r"/flows/(?P<flow_id>[0-9a-f\-]+)", FlowHandler),
                 (r"/flows/(?P<flow_id>[0-9a-f\-]+)/resume", ResumeFlow),
