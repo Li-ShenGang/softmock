@@ -221,11 +221,17 @@ class IndexHandler(RequestHandler):
     def get(self):
         token = self.xsrf_token  # https://github.com/tornadoweb/tornado/issues/645
         assert token
+        host_filter = self.get_argument('host_filter')
+        if ctx.options.host != host_filter and ctx.options.host:
+            print('host更换为：', host_filter)
+        ctx.options.host = host_filter
         self.render("index.html")
+
 
 class Manifest(RequestHandler):
     def get(self):
         self.render("manifest.json")
+
 
 class FilterHelp(RequestHandler):
     def get(self):
@@ -285,7 +291,7 @@ class WebSocketEventBroadcaster(tornado.websocket.WebSocketHandler):
             """
             已经存在记录，则不需要返回新的id，直接把旧的id返回去
             """
-            sql = f"select detail from Mock1 where url='{url}'"
+            sql = f"select `detail` from Mock1 where url='{url}'"
             js = [i for i in cursor.execute(sql)][0][0]
             result = json.loads(parse.unquote(js))
             kwargs['data']['id'] = result['data']['id']
@@ -294,11 +300,11 @@ class WebSocketEventBroadcaster(tornado.websocket.WebSocketHandler):
                 kwargs['data']['response'] = result['data'].get(
                     'response', None)
             message = parse.quote(json.dumps(kwargs, ensure_ascii=False))
-            sql = f"update Mock1 set detail=? where url=?"
+            sql = f"update Mock1 set `detail`=? where url=?"
             cursor.execute(sql, (message, url))
         else:  # 新增记录
             message = parse.quote(json.dumps(kwargs, ensure_ascii=False))
-            sql = f"insert into Mock1 (id, detail, url, status) values (?, ?, ?, ?)"
+            sql = f"insert into Mock1 (`id`, `detail`, `url`, `status`) values (?, ?, ?, ?)"
             cursor.execute(
                 sql, (msg_id, message, url, '1'))
 
@@ -409,7 +415,24 @@ class DeleteFlow(RequestHandler):
         url = base64.b64decode(self.get_argument('url').encode()).decode()
         db = sqlite3.connect("soft_mock.db")
         cursor = db.cursor()
-        sql = f"delete from Mock1 where url='{url}'"
+        sql = f"delete from Mock1 where `url`='{url}'"
+        cursor.execute(sql)
+        db.commit()
+        cursor.close()
+        db.close()
+        self.write('0')
+
+
+class CreateFlow(RequestHandler):
+    def post(self):
+        '''
+        新增记录
+        '''
+        url = base64.b64decode(self.get_argument('url').encode()).decode()
+        detail = self.request.body.decode()
+        db = sqlite3.connect("soft_mock.db")
+        cursor = db.cursor()
+        sql = f"insert into Mock1 (`detail`, `status`, `url`) values ('{parse.quote(detail)}', '1', '{url}')"
         cursor.execute(sql)
         db.commit()
         cursor.close()
@@ -427,7 +450,7 @@ class UpdateFlow(RequestHandler):
         detail = self.request.body.decode()
         db = sqlite3.connect("soft_mock.db")
         cursor = db.cursor()
-        sql = f"update Mock1 set detail='{parse.quote(detail)}', status='{status}' where url='{url}'"
+        sql = f"update Mock1 set `detail`='{parse.quote(detail)}', `status`='{status}' where `url`='{url}'"
         cursor.execute(sql)
         db.commit()
         cursor.close()
@@ -688,6 +711,7 @@ class Application(tornado.web.Application):
                 (r"/flows(?:\.json)?", Flows),
                 (r"/flows/dump", DumpFlows),
                 (r"/flows/resume", ResumeFlows),
+                (r"/create", CreateFlow),
                 (r"/flows/kill", KillFlows),
                 (r"/update_flow", UpdateFlow),
                 (r"/delete_flow", DeleteFlow),

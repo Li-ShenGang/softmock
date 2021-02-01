@@ -37,8 +37,6 @@ class Host:
         js = [i for i in cursor.execute(sql)]
         if len(js) > 0:
             result = json.loads(parse.unquote(js[0][1]))
-            html = result['data'].get(
-                'response', None)
             # flow.response = result['data']['response']
             response = result['data'].get('response', None)
             if not response:

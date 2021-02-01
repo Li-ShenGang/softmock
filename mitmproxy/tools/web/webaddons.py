@@ -24,7 +24,7 @@ class WebAddon:
 
     def running(self):
         if hasattr(ctx.options, "web_open_browser") and ctx.options.web_open_browser:
-            web_url = f"http://{ctx.options.web_host}:{ctx.options.web_port}/"
+            web_url = f"http://{ctx.options.web_host}:{ctx.options.web_port}/?host_filter={ctx.options.host}"
             success = open_browser(web_url)
             if not success:
                 ctx.log.info(
