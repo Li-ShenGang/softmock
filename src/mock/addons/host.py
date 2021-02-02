@@ -21,18 +21,19 @@ class Host:
         """
         @wraps(fn)
         def wrapper(self, flow):
-            return fn(self, flow) if self.host in flow.request.host else None
+            return fn(self, flow) if ctx.options.host in flow.request.host else None
 
         return wrapper
 
     @exclude_host
     def request(self, flow: mitmproxy.http.HTTPFlow):
-        ctx.log.info("访问" + self.host)
+
         url = flow.request.scheme + '://' + \
             flow.request.host + flow.request.path.split('?')[0]
         db = sqlite3.connect("soft_mock.db")
         cursor = db.cursor()
         sql = f"select * from Mock1 where url='{url}' and status='1'"
+        print(f'拦截{url}到本地')
         result = cursor.execute(sql)
         js = [i for i in cursor.execute(sql)]
         if len(js) > 0:
