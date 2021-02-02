@@ -1,10 +1,14 @@
 import mitmproxy.http
 import sys
+import platform
+import os
+import subprocess
 from mitmproxy import ctx, http
 from mitmproxy.tools.main import mitmweb, run as mitmproxy_run
 from mitmproxy.tools import web, cmdline
 from mitmproxy import options
 import sqlite3
+
 # 导入addons
 from .addons import Host
 
@@ -22,11 +26,66 @@ class Proxy:
         except:
             pass
 
+    def set_browser_proxy(self):
+
+        proxy = "localhost"
+        port = 8080
+
+        if platform.system() == 'Windows':
+            self.set_windows(proxy, port)
+        else:
+            self.set_other_platform(proxy, port)
+
+    def set_windows(self):
+        import _winreg as winreg
+        INTERNET_SETTINGS = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows\CurrentVersion\Internet Settings', 0, winreg.KEY_ALL_ACCESS)
+
+        def set_key(name, value):
+            _, reg_type = winreg.QueryValueEx(INTERNET_SETTINGS, name)
+            winreg.SetValueEx(INTERNET_SETTINGS, name, 0, reg_type, value)
+        set_key('ProxyEnable', 1)
+        # Bypass the proxy for localhost
+        set_key('ProxyOverride', u'*.local;<local>')
+        set_key('ProxyServer', u'X.X.X.X:8080')
+
+    def close_windows(self):
+        import _winreg as winreg
+        INTERNET_SETTINGS = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows\CurrentVersion\Internet Settings', 0, winreg.KEY_ALL_ACCESS)
+
+        def set_key(name, value):
+            _, reg_type = winreg.QueryValueEx(INTERNET_SETTINGS, name)
+            winreg.SetValueEx(INTERNET_SETTINGS, name, 0, reg_type, value)
+        set_key('ProxyEnable', 0)
+
+    def set_other_platform(self, proxy, port):
+        # 设置http代理
+        os.system(f'networksetup -setwebproxy "Wi-Fi" {proxy} {port}')
+        # 设置https代理
+        os.system(f'networksetup -setsecurewebproxy "Wi-Fi" {proxy} {port}')
+
+    def close_other_platform(self):
+        # 关闭http代理
+        os.system('networksetup -setwebproxystate "Wi-Fi" off')
+        # 关闭https代理
+        os.system('networksetup -setsecurewebproxystate "Wi-Fi" off')
+
+    def browser_proxy_off(self):
+        if platform.system() == 'Windows':
+            self.close_windows()
+        else:
+            self.close_other_platform()
+
     def server_start(self):
         sys.argv = sys.argv[0:1]
         addons = [Host(self.host, self.conn)]  # 添加插件
+        # 设置浏览器代理
+        self.set_browser_proxy()
         mitmproxy_run(web.master.WebMaster, cmdline.mitmweb,
                       ['--host', self.host], extend_addons=addons)
+        # 关闭浏览器代理
+        self.browser_proxy_off()
         return None
 
     def run(self):

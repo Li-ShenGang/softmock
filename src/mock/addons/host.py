@@ -66,7 +66,7 @@ class Host:
             if 'image' in content_type or 'video' in content_type:
                 html = base64.b64decode(html.encode())
             flow.response = mitmproxy.http.HTTPResponse.make(
-                response['status_code'],  # (optional) status code
+                response['status_code'] or 200,  # (optional) status code
                 html,  # (optional) content
                 headers  # (optional) headers
             )

@@ -469,7 +469,7 @@ class UpdateStatus():
         status = self.get_argument('status')
         db = sqlite3.connect("soft_mock.db")
         cursor = db.cursor()
-        sql = f"update Mock1 set status='{status}' where url='{url}'"
+        sql = f"update Mock1 set `status`='{status}' where url='{url}'"
         cursor.execute(sql)
         db.commit()
         cursor.close()
