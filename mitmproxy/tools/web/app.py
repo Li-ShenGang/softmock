@@ -99,7 +99,10 @@ def flow_to_json(flow: mitmproxy.flow.Flow) -> dict:
                 try:
                     html = flow.response.content.decode()
                 except:
-                    html = None
+                    '''
+                    很可能是二进制文件
+                    '''
+                    html = base64.b64encode(flow.response.content).decode()
             else:
                 content_length = None
                 content_hash = None
@@ -157,7 +160,7 @@ class RequestHandler(tornado.web.RequestHandler):
 
     def set_default_headers(self):
         super().set_default_headers()
-        self.set_header("Server", version.MITMPROXY)
+        self.set_header("Server", 'SOFT_MOCK')
         # 允许跨域
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Allow-Headers", "x-requested-with")
@@ -165,12 +168,12 @@ class RequestHandler(tornado.web.RequestHandler):
         self.set_header("X-Frame-Options", "DENY")
         self.add_header("X-XSS-Protection", "1; mode=block")
         self.add_header("X-Content-Type-Options", "nosniff")
-        self.add_header(
-            "Content-Security-Policy",
-            "default-src 'self'; "
-            "connect-src 'self' ws:; "
-            "style-src   'self' 'unsafe-inline'"
-        )
+        # self.add_header(
+        #     "Content-Security-Policy",
+        #     "default-src 'self'; "
+        #     "connect-src 'self' ws:; "
+        #     "style-src   'self' 'unsafe-inline'"
+        # )
 
     @property
     def json(self):
@@ -327,8 +330,6 @@ class ClientConnection(WebSocketEventBroadcaster):
 
 class Flows(RequestHandler):
     def get(self):
-        # result = [flow_to_json(f) for f in self.view]
-        # print('result', result)
         # 获取历史记录
         db = sqlite3.connect("soft_mock.db")
         cursor = db.cursor()

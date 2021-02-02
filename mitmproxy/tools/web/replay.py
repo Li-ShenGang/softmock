@@ -1,5 +1,4 @@
 import requests
-import ahttp
 import base64
 
 proxy = {
@@ -29,10 +28,14 @@ def proxy_req(result, serve_url):
     headers = parse_headers(req['headers'])
     req_data = req['raw_content']
     print('replay:', req['method'], url)
-    resp = requests.get(url, headers=headers, data=req_data,
-                        timeout=(3, 3), proxies=proxy)
+    resp = requests.request(req['method'], url, headers=headers, data=req_data,
+                            timeout=(10, 10), proxies=proxy)
     if not data['response']:
         data['response'] = {}
+    content_type = resp.headers['content-type'] or resp.headers['Content-type']
     data['response']['headers'] = dump_headers(resp.headers)
-    data['response']['html'] = resp.text
+    if 'image' in content_type or 'video' in content_type:
+        data['response']['html'] = base64.b64encode(resp.content).decode()
+    else:
+        data['response']['html'] = resp.text
     return result

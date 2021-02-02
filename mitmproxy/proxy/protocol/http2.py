@@ -63,7 +63,8 @@ class SafeH2Connection(connection.H2Connection):
                 self.lock.acquire()
                 raise_zombie(self.lock.release)
                 max_outbound_frame_size = self.max_outbound_frame_size
-                frame_chunk = chunk[position:position + max_outbound_frame_size]
+                frame_chunk = chunk[position:position +
+                                    max_outbound_frame_size]
                 if self.local_flow_control_window(stream_id) < len(frame_chunk):  # pragma: no cover
                     self.lock.release()
                     time.sleep(0.1)
@@ -114,7 +115,8 @@ class Http2Layer(base.Layer):
             validate_outbound_headers=False,
             validate_inbound_headers=False,
             logger=self.H2ConnLogger("client", self.log))
-        self.connections[self.client_conn] = SafeH2Connection(self.client_conn, config=config)
+        self.connections[self.client_conn] = SafeH2Connection(
+            self.client_conn, config=config)
 
     def _initiate_server_conn(self):
         if self.server_conn.connected():
@@ -124,15 +126,18 @@ class Http2Layer(base.Layer):
                 validate_outbound_headers=False,
                 validate_inbound_headers=False,
                 logger=self.H2ConnLogger("server", self.log))
-            self.connections[self.server_conn] = SafeH2Connection(self.server_conn, config=config)
+            self.connections[self.server_conn] = SafeH2Connection(
+                self.server_conn, config=config)
         self.connections[self.server_conn].initiate_connection()
-        self.server_conn.send(self.connections[self.server_conn].data_to_send())
+        self.server_conn.send(
+            self.connections[self.server_conn].data_to_send())
 
     def _complete_handshake(self):
         preamble = self.client_conn.rfile.read(24)
         self.connections[self.client_conn].initiate_connection()
         self.connections[self.client_conn].receive_data(preamble)
-        self.client_conn.send(self.connections[self.client_conn].data_to_send())
+        self.client_conn.send(
+            self.connections[self.client_conn].data_to_send())
 
     def next_layer(self):  # pragma: no cover
         # WebSocket over HTTP/2?
@@ -178,8 +183,10 @@ class Http2Layer(base.Layer):
         return True
 
     def _handle_request_received(self, eid, event):
-        headers = mitmproxy.net.http.Headers([[k, v] for k, v in event.headers])
-        self.streams[eid] = Http2SingleStreamLayer(self, self.connections[self.client_conn], eid, headers)
+        headers = mitmproxy.net.http.Headers(
+            [[k, v] for k, v in event.headers])
+        self.streams[eid] = Http2SingleStreamLayer(
+            self, self.connections[self.client_conn], eid, headers)
         self.streams[eid].timestamp_start = time.time()
         if event.priority_updated is not None:
             self.streams[eid].priority_exclusive = event.priority_updated.exclusive
@@ -191,7 +198,8 @@ class Http2Layer(base.Layer):
         return True
 
     def _handle_response_received(self, eid, event):
-        headers = mitmproxy.net.http.Headers([[k, v] for k, v in event.headers])
+        headers = mitmproxy.net.http.Headers(
+            [[k, v] for k, v in event.headers])
         self.streams[eid].queued_data_length = 0
         self.streams[eid].timestamp_start = time.time()
         self.streams[eid].response_message.headers = headers
@@ -231,25 +239,28 @@ class Http2Layer(base.Layer):
             else:
                 other_stream_id = self.streams[eid].server_stream_id
             if other_stream_id is not None:
-                self.connections[other_conn].safe_reset_stream(other_stream_id, event.error_code)
+                self.connections[other_conn].safe_reset_stream(
+                    other_stream_id, event.error_code)
         return True
 
     def _handle_trailers(self, eid, event, is_server, other_conn):
-        trailers = mitmproxy.net.http.Headers([[k, v] for k, v in event.headers])
+        trailers = mitmproxy.net.http.Headers(
+            [[k, v] for k, v in event.headers])
         self.streams[eid].trailers = trailers
         return True
 
     def _handle_remote_settings_changed(self, event, other_conn):
-        new_settings = {key: cs.new_value for (key, cs) in event.changed_settings.items()}
+        new_settings = {key: cs.new_value for (
+            key, cs) in event.changed_settings.items()}
         self.connections[other_conn].safe_update_settings(new_settings)
         return True
 
     def _handle_connection_terminated(self, event, is_server):
-        self.log("HTTP/2 connection terminated by {}: error code: {}, last stream id: {}, additional data: {}".format(
-            "server" if is_server else "client",
-            event.error_code,
-            event.last_stream_id,
-            event.additional_data), "info")
+        # self.log("HTTP/2 connection terminated by {}: error code: {}, last stream id: {}, additional data: {}".format(
+        # "server" if is_server else "client",
+        # event.error_code,
+        # event.last_stream_id,
+        # event.additional_data), "info")
 
         if event.error_code != h2.errors.ErrorCodes.NO_ERROR:
             # Something terrible has happened - kill everything!
@@ -258,7 +269,8 @@ class Http2Layer(base.Layer):
                 last_stream_id=event.last_stream_id,
                 additional_data=event.additional_data
             )
-            self.client_conn.send(self.connections[self.client_conn].data_to_send())
+            self.client_conn.send(
+                self.connections[self.client_conn].data_to_send())
             self._kill_all_streams()
         else:
             """
@@ -273,11 +285,15 @@ class Http2Layer(base.Layer):
 
         parent_eid = self.server_to_client_stream_ids[event.parent_stream_id]
         with self.connections[self.client_conn].lock:
-            self.connections[self.client_conn].push_stream(parent_eid, event.pushed_stream_id, event.headers)
-            self.client_conn.send(self.connections[self.client_conn].data_to_send())
+            self.connections[self.client_conn].push_stream(
+                parent_eid, event.pushed_stream_id, event.headers)
+            self.client_conn.send(
+                self.connections[self.client_conn].data_to_send())
 
-        headers = mitmproxy.net.http.Headers([[k, v] for k, v in event.headers])
-        layer = Http2SingleStreamLayer(self, self.connections[self.client_conn], event.pushed_stream_id, headers)
+        headers = mitmproxy.net.http.Headers(
+            [[k, v] for k, v in event.headers])
+        layer = Http2SingleStreamLayer(
+            self, self.connections[self.client_conn], event.pushed_stream_id, headers)
         self.streams[event.pushed_stream_id] = layer
         self.streams[event.pushed_stream_id].timestamp_start = time.time()
         self.streams[event.pushed_stream_id].pushed = True
@@ -290,7 +306,8 @@ class Http2Layer(base.Layer):
 
     def _handle_priority_updated(self, eid, event):
         if not self.config.options.http2_priority:
-            self.log("HTTP/2 PRIORITY frame suppressed. Use --http2-priority to enable forwarding.", "debug")
+            self.log(
+                "HTTP/2 PRIORITY frame suppressed. Use --http2-priority to enable forwarding.", "debug")
             return True
 
         if eid in self.streams and self.streams[eid].handled_priority_event is event:
@@ -313,10 +330,12 @@ class Http2Layer(base.Layer):
             self.connections[self.server_conn].prioritize(
                 mapped_stream_id,
                 weight=event.weight,
-                depends_on=self._map_depends_on_stream_id(mapped_stream_id, event.depends_on),
+                depends_on=self._map_depends_on_stream_id(
+                    mapped_stream_id, event.depends_on),
                 exclusive=event.exclusive
             )
-            self.server_conn.send(self.connections[self.server_conn].data_to_send())
+            self.server_conn.send(
+                self.connections[self.server_conn].data_to_send())
         return True
 
     def _map_depends_on_stream_id(self, stream_id, depends_on):
@@ -334,8 +353,10 @@ class Http2Layer(base.Layer):
     def _cleanup_streams(self):
         death_time = time.time() - 10
 
-        zombie_streams = [(stream_id, stream) for stream_id, stream in list(self.streams.items()) if stream.zombie]
-        outdated_streams = [stream_id for stream_id, stream in zombie_streams if stream.zombie <= death_time]
+        zombie_streams = [(stream_id, stream) for stream_id, stream in list(
+            self.streams.items()) if stream.zombie]
+        outdated_streams = [stream_id for stream_id,
+                            stream in zombie_streams if stream.zombie <= death_time]
 
         for stream_id in outdated_streams:  # pragma: no cover
             self.streams.pop(stream_id, None)
@@ -360,18 +381,22 @@ class Http2Layer(base.Layer):
 
                     with self.connections[source_conn].lock:
                         try:
-                            _, consumed_bytes = http2.read_frame(source_conn.rfile)
+                            _, consumed_bytes = http2.read_frame(
+                                source_conn.rfile)
                         except:
                             # read frame failed: connection closed
                             self._kill_all_streams()
                             return
 
                         if self.connections[source_conn].state_machine.state == h2.connection.ConnectionState.CLOSED:
-                            self.log("HTTP/2 connection entered closed state already", "debug")
+                            self.log(
+                                "HTTP/2 connection entered closed state already", "debug")
                             return
 
-                        incoming_events = self.connections[source_conn].receive_data(consumed_bytes)
-                        source_conn.send(self.connections[source_conn].data_to_send())
+                        incoming_events = self.connections[source_conn].receive_data(
+                            consumed_bytes)
+                        source_conn.send(
+                            self.connections[source_conn].data_to_send())
 
                         for event in incoming_events:
                             if not self._handle_event(event, source_conn, other_conn, is_server):
@@ -400,13 +425,19 @@ class Http2SingleStreamLayer(httpbase._HttpTransmissionLayer, basethread.BaseThr
 
     class Message:
         def __init__(self, headers=None):
-            self.headers: Optional[mitmproxy.net.http.Headers] = headers  # headers are the first thing to be received on a new stream
-            self.data_queue: queue.Queue[bytes] = queue.Queue()  # contains raw contents of DATA frames
-            self.queued_data_length = 0  # used to enforce mitmproxy's config.options.body_size_limit
-            self.trailers: Optional[mitmproxy.net.http.Headers] = None  # trailers are received after stream_ended is set
+            # headers are the first thing to be received on a new stream
+            self.headers: Optional[mitmproxy.net.http.Headers] = headers
+            # contains raw contents of DATA frames
+            self.data_queue: queue.Queue[bytes] = queue.Queue()
+            # used to enforce mitmproxy's config.options.body_size_limit
+            self.queued_data_length = 0
+            # trailers are received after stream_ended is set
+            self.trailers: Optional[mitmproxy.net.http.Headers] = None
 
-            self.arrived = threading.Event()  # indicates the HEADERS+CONTINUTATION frames have been received
-            self.stream_ended = threading.Event()  # indicates the a frame with the END_STREAM flag has been received
+            # indicates the HEADERS+CONTINUTATION frames have been received
+            self.arrived = threading.Event()
+            # indicates the a frame with the END_STREAM flag has been received
+            self.stream_ended = threading.Event()
 
     def __init__(self, ctx, h2_connection, stream_id: int, request_headers: mitmproxy.net.http.Headers) -> None:
         super().__init__(
@@ -438,10 +469,12 @@ class Http2SingleStreamLayer(httpbase._HttpTransmissionLayer, basethread.BaseThr
             self.response_message.stream_ended.set()
 
     def connect(self):  # pragma: no cover
-        raise exceptions.Http2ProtocolException("HTTP2 layer should already have a connection.")
+        raise exceptions.Http2ProtocolException(
+            "HTTP2 layer should already have a connection.")
 
     def disconnect(self):  # pragma: no cover
-        raise exceptions.Http2ProtocolException("Cannot dis- or reconnect in HTTP2 connections.")
+        raise exceptions.Http2ProtocolException(
+            "Cannot dis- or reconnect in HTTP2 connections.")
 
     def set_server(self, address):  # pragma: no cover
         raise exceptions.SetServerNotAllowedException(repr(address))
@@ -497,7 +530,8 @@ class Http2SingleStreamLayer(httpbase._HttpTransmissionLayer, basethread.BaseThr
         if self.zombie is not None or connection_closed:
             if pre_command is not None:
                 pre_command()
-            raise exceptions.Http2ZombieException(f"Connection or stream already dead: {self.zombie}, {connection_closed}")
+            raise exceptions.Http2ZombieException(
+                f"Connection or stream already dead: {self.zombie}, {connection_closed}")
 
     @detect_zombie_stream
     def read_request_headers(self, flow):
@@ -575,7 +609,8 @@ class Http2SingleStreamLayer(httpbase._HttpTransmissionLayer, basethread.BaseThr
         # We must not assign a stream id if we are already a zombie.
         self.raise_zombie()
 
-        self.server_stream_id = self.connections[self.server_conn].get_next_available_stream_id()
+        self.server_stream_id = self.connections[self.server_conn].get_next_available_stream_id(
+        )
         self.server_to_client_stream_ids[self.server_stream_id] = self.client_stream_id
 
         headers = request.headers.copy()
@@ -592,10 +627,12 @@ class Http2SingleStreamLayer(httpbase._HttpTransmissionLayer, basethread.BaseThr
             # only send priority information if they actually came with the original HeadersFrame
             # and not if they got updated before/after with a PriorityFrame
             if not self.config.options.http2_priority:
-                self.log("HTTP/2 PRIORITY information in HEADERS frame suppressed. Use --http2-priority to enable forwarding.", "debug")
+                self.log(
+                    "HTTP/2 PRIORITY information in HEADERS frame suppressed. Use --http2-priority to enable forwarding.", "debug")
             else:
                 priority_exclusive = self.priority_exclusive
-                priority_depends_on = self._map_depends_on_stream_id(self.server_stream_id, self.priority_depends_on)
+                priority_depends_on = self._map_depends_on_stream_id(
+                    self.server_stream_id, self.priority_depends_on)
                 priority_weight = self.priority_weight
 
         try:
@@ -603,7 +640,8 @@ class Http2SingleStreamLayer(httpbase._HttpTransmissionLayer, basethread.BaseThr
                 self.raise_zombie,
                 self.server_stream_id,
                 headers,
-                end_stream=(False if request.content or request.trailers or request.stream else True),
+                end_stream=(
+                    False if request.content or request.trailers or request.stream else True),
                 priority_exclusive=priority_exclusive,
                 priority_depends_on=priority_depends_on,
                 priority_weight=priority_weight,
@@ -726,7 +764,8 @@ class Http2SingleStreamLayer(httpbase._HttpTransmissionLayer, basethread.BaseThr
         except exceptions.ProtocolException as e:  # pragma: no cover
             self.log(repr(e), "info")
         except exceptions.SetServerNotAllowedException as e:  # pragma: no cover
-            self.log(f"Changing the Host server for HTTP/2 connections not allowed: {e}", "info")
+            self.log(
+                f"Changing the Host server for HTTP/2 connections not allowed: {e}", "info")
         except exceptions.Kill:  # pragma: no cover
             self.log(flow.Error.KILLED_MESSAGE, "info")
 

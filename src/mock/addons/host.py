@@ -2,6 +2,7 @@ from mitmproxy.net.http import response
 import mitmproxy.http
 import sqlite3
 import json
+import base64
 from mitmproxy import ctx
 from urllib import parse
 from functools import wraps
@@ -25,11 +26,22 @@ class Host:
 
         return wrapper
 
+    # @exclude_host
+    # def http_connect(self, flow: mitmproxy.http.HTTPFlow):
+    #     '''
+    #     在应用层，dns查询之前
+    #     '''
+    #     print(flow.server_conn.__dict__)
+
     @exclude_host
     def request(self, flow: mitmproxy.http.HTTPFlow):
-
+        '''
+        网络层
+        dns查询之后
+        '''
         url = flow.request.scheme + '://' + \
             flow.request.host + flow.request.path.split('?')[0]
+        print(url)
         db = sqlite3.connect("soft_mock.db")
         cursor = db.cursor()
         sql = f"select * from Mock1 where url='{url}' and status='1'"
@@ -48,14 +60,22 @@ class Host:
                     headers[header[0]] = header[1]
             except:
                 pass
+            content_type = headers.get(
+                'content-type', None) or headers.get('Content-Type', None)
+            html = response['html']
+            if 'image' in content_type or 'video' in content_type:
+                html = base64.b64decode(html.encode())
             flow.response = mitmproxy.http.HTTPResponse.make(
                 response['status_code'],  # (optional) status code
-                response['html'],  # (optional) content
+                html,  # (optional) content
                 headers  # (optional) headers
             )
 
         cursor.close()
         db.close()
+
+    def sentry():
+        pass
 
     @exclude_host
     def response(self, flow: mitmproxy.http.HTTPFlow):
