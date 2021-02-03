@@ -17,6 +17,7 @@ class Proxy:
     def __init__(self, host):
         self.host = host
         self.conn = sqlite3.connect("soft_mock.db")
+        self.network_list = ['Wi-Fi', 'Ethernet']
         cursor = self.conn.cursor()
         try:
             sql = "create table Mock1 (id varchar(100) primary key, detail TEXT, url TEXT, status Text)"
@@ -60,16 +61,25 @@ class Proxy:
         set_key('ProxyEnable', 0)
 
     def set_other_platform(self, proxy, port):
-        # 设置http代理
-        os.system(f'networksetup -setwebproxy "Wi-Fi" {proxy} {port}')
-        # 设置https代理
-        os.system(f'networksetup -setsecurewebproxy "Wi-Fi" {proxy} {port}')
+        li = subprocess.getoutput(
+            'networksetup -listallnetworkservices').split('\n')
+        for net in li:
+            if len([i for i in self.network_list if i in net]):
+                # 设置http代理
+                os.system(f'networksetup -setwebproxy "{net}" {proxy} {port}')
+                # 设置https代理
+                os.system(
+                    f'networksetup -setsecurewebproxy "{net}" {proxy} {port}')
 
     def close_other_platform(self):
-        # 关闭http代理
-        os.system('networksetup -setwebproxystate "Wi-Fi" off')
-        # 关闭https代理
-        os.system('networksetup -setsecurewebproxystate "Wi-Fi" off')
+        li = subprocess.getoutput(
+            'networksetup -listallnetworkservices').split('\n')
+        for net in li:
+            if len([i for i in self.network_list if i in net]):
+                # 关闭http代理
+                os.system(f'networksetup -setwebproxystate "{net}" off')
+                # 关闭https代理
+                os.system(f'networksetup -setsecurewebproxystate "{net}" off')
 
     def browser_proxy_off(self):
         if platform.system() == 'Windows':
