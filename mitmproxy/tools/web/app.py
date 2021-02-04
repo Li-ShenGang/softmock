@@ -97,7 +97,8 @@ def flow_to_json(flow: mitmproxy.flow.Flow) -> dict:
                     flow.response.raw_content).hexdigest()
                 # 获取html
                 try:
-                    html = flow.response.content.decode()
+                    codeType = detect(flow.response.content)['encoding']
+                    html = flow.response.content.decode(codeType)
                 except:
                     '''
                     很可能是二进制文件
