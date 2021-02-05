@@ -40,8 +40,8 @@ class Host:
         dns查询之后
         '''
         url = flow.request.scheme + '://' + \
-            flow.request.host + flow.request.path.split('?')[0]
-        print(url)
+            flow.request.host + \
+            flow.request.path.split('?')[0] + ' ' + flow.request.method
         db = sqlite3.connect("soft_mock.db")
         cursor = db.cursor()
         sql = f"select * from Mock1 where url='{url}' and status='1'"

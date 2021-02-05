@@ -21,7 +21,7 @@ def dump_headers(headers):
     return result
 
 
-def proxy_req(result, serve_url):
+def proxy_req(result):
     data = result['data']
     req = data['request']
     url = (req['scheme'] + '://' + req['host'] + req['path']).strip()

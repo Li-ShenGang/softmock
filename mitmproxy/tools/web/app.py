@@ -288,7 +288,9 @@ class WebSocketEventBroadcaster(tornado.websocket.WebSocketHandler):
         req = kwargs['data']['request']
         is_update_response = False if not kwargs['data'].get(
             'response', None) else True if kwargs['data']['response'].get('html', None) else False
-        url = req['scheme'] + '://' + req['host'] + req['path'].split('?')[0]
+        is_update_request = False
+        url = req['scheme'] + '://' + req['host'] + \
+            req['path'].split('?')[0] + ' ' + req['method']
         db = sqlite3.connect("soft_mock.db")
         cursor = db.cursor()
         sql = f"select count(*) from Mock1 where url='{url}'"
@@ -296,6 +298,7 @@ class WebSocketEventBroadcaster(tornado.websocket.WebSocketHandler):
             """
             已经存在记录，则不需要返回新的id，直接把旧的id返回去
             """
+
             sql = f"select `detail` from Mock1 where url='{url}'"
             js = [i for i in cursor.execute(sql)][0][0]
             result = json.loads(parse.unquote(js))
@@ -304,6 +307,11 @@ class WebSocketEventBroadcaster(tornado.websocket.WebSocketHandler):
             if not is_update_response:
                 kwargs['data']['response'] = result['data'].get(
                     'response', None)
+            if is_update_request:
+                if result['data']['request'].get('aliasName', None):
+                    kwargs['data']['request']['aliasName'] = result['data']['request']['aliasName']
+            else:
+                kwargs['data']['request'] = result['data']['request']
             message = parse.quote(json.dumps(kwargs, ensure_ascii=False))
             sql = f"update Mock1 set `detail`=? where url=?"
             cursor.execute(sql, (message, url))
@@ -435,8 +443,8 @@ class CreateFlow(RequestHandler):
         detail = self.request.body.decode()
         db = sqlite3.connect("soft_mock.db")
         cursor = db.cursor()
-        sql = f"insert into Mock1 (`detail`, `status`, `url`) values ('{parse.quote(detail)}', '1', '{url}')"
-        cursor.execute(sql)
+        sql = f"insert into Mock1 (`detail`, `status`, `url`) values (?, ?, ?)"
+        cursor.execute(sql, (parse.quote(detail), '1', url))
         db.commit()
         cursor.close()
         db.close()
@@ -453,8 +461,9 @@ class UpdateFlow(RequestHandler):
         detail = self.request.body.decode()
         db = sqlite3.connect("soft_mock.db")
         cursor = db.cursor()
-        sql = f"update Mock1 set `detail`='{parse.quote(detail)}', `status`='{status}' where `url`='{url}'"
-        cursor.execute(sql)
+        print(url)
+        sql = f"update Mock1 set `detail`='{parse.quote(detail)}', `status`='{status}' where `url`=?"
+        cursor.execute(sql, (url, ))
         db.commit()
         cursor.close()
         db.close()
@@ -573,7 +582,7 @@ class ReplayMe(RequestHandler):
         js = [i for i in cursor.execute(sql)][0][0]
         result = json.loads(parse.unquote(js))
         # result['data']['response'] = None
-        update_result = proxy_req(result, self.get_argument('url'))
+        update_result = proxy_req(result)
         sql2 = f"update Mock1 set `detail`='{parse.quote(json.dumps(update_result))}' where url='{url}'"
         cursor.execute(sql2)
         db.commit()
