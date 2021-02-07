@@ -1,0 +1,3 @@
+[console_scripts]
+softmock = softmock:entry
+
