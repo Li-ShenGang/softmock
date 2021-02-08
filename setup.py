@@ -5,7 +5,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 setup(
     name="softmock",
-    version="0.2.1",
+    version="0.2.3",
     author="lishengang",
     author_email="py.r@qq.com",
     description="一个基于录制请求的mock工具",
