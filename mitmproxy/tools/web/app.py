@@ -458,10 +458,11 @@ class UpdateFlow(RequestHandler):
         '''
         url = base64.b64decode(self.get_argument('url').encode()).decode()
         status = self.get_argument('status')
+        status = '1' if status == 'true' else status
         detail = self.request.body.decode()
         db = sqlite3.connect("soft_mock.db")
         cursor = db.cursor()
-        print(url)
+        print('更新：'+url)
         sql = f"update Mock1 set `detail`='{parse.quote(detail)}', `status`='{status}' where `url`=?"
         cursor.execute(sql, (url, ))
         db.commit()
