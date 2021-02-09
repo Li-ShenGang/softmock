@@ -9,11 +9,13 @@ import sqlite3
 # 导入addons
 from .addons import Host
 
+here = os.path.abspath(os.path.dirname(__file__))
+
 
 class Proxy:
     def __init__(self, host):
         self.host = host
-        self.conn = sqlite3.connect("soft_mock.db")
+        self.conn = sqlite3.connect(os.path.join(here, "soft_mock.db"))
         self.network_list = ['Wi-Fi', 'Ethernet']
         cursor = self.conn.cursor()
         try:
@@ -34,8 +36,8 @@ class Proxy:
         else:
             self.set_other_platform(proxy, port)
 
-    def set_windows(self):
-        import _winreg as winreg
+    def set_windows(self, proxy, port):
+        import winreg
         INTERNET_SETTINGS = winreg.OpenKey(
             winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows\CurrentVersion\Internet Settings', 0, winreg.KEY_ALL_ACCESS)
 
@@ -45,10 +47,10 @@ class Proxy:
         set_key('ProxyEnable', 1)
         # Bypass the proxy for localhost
         set_key('ProxyOverride', u'*.local;<local>')
-        set_key('ProxyServer', u'X.X.X.X:8080')
+        set_key('ProxyServer', f'{proxy}:{port}')
 
     def close_windows(self):
-        import _winreg as winreg
+        import winreg
         INTERNET_SETTINGS = winreg.OpenKey(
             winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows\CurrentVersion\Internet Settings', 0, winreg.KEY_ALL_ACCESS)
 
@@ -56,6 +58,7 @@ class Proxy:
             _, reg_type = winreg.QueryValueEx(INTERNET_SETTINGS, name)
             winreg.SetValueEx(INTERNET_SETTINGS, name, 0, reg_type, value)
         set_key('ProxyEnable', 0)
+        set_key('ProxyServer', f'')
 
     def set_other_platform(self, proxy, port):
         li = subprocess.getoutput(

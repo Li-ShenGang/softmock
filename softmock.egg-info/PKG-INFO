@@ -1,0 +1,15 @@
+Metadata-Version: 2.1
+Name: softmock
+Version: 0.2.3
+Summary: 一个基于录制请求的mock工具
+Home-page: https://github.com/web-trump/soft-mock
+Author: lishengang
+Author-email: py.r@qq.com
+License: MIT
+Description: UNKNOWN
+Platform: UNKNOWN
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Developers
+Classifier: Natural Language :: Chinese (Simplified)
+Requires-Python: >=3.8
+Provides-Extra: dev
