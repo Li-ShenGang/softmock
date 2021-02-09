@@ -34,8 +34,8 @@ class Proxy:
         else:
             self.set_other_platform(proxy, port)
 
-    def set_windows(self):
-        import _winreg as winreg
+    def set_windows(self, proxy, port):
+        import winreg
         INTERNET_SETTINGS = winreg.OpenKey(
             winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows\CurrentVersion\Internet Settings', 0, winreg.KEY_ALL_ACCESS)
 
@@ -45,10 +45,10 @@ class Proxy:
         set_key('ProxyEnable', 1)
         # Bypass the proxy for localhost
         set_key('ProxyOverride', u'*.local;<local>')
-        set_key('ProxyServer', u'X.X.X.X:8080')
+        set_key('ProxyServer', f'{proxy}:{port}')
 
     def close_windows(self):
-        import _winreg as winreg
+        import winreg
         INTERNET_SETTINGS = winreg.OpenKey(
             winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows\CurrentVersion\Internet Settings', 0, winreg.KEY_ALL_ACCESS)
 
