@@ -2,11 +2,11 @@
 
 ## 介绍
 
-** softmock 是一个拦截 http/https 到本地的工具。 **
+**softmock 是一个拦截 http/https 到本地的工具。**
 
-** 请求拦截到本地之后，可以进行修改、新增等操作，使下次请求直接返回到本地的数据。而不依赖远程服务器。 **
+**请求拦截到本地之后，可以进行修改、新增等操作，使下次请求直接返回到本地的数据。而不依赖远程服务器。**
 
-- softmock 是从 抓包工具[mitmproxy](https://github.com/mitmproxy/mitmproxy) 经过修改，重构实现 \*
+_softmock 是从 抓包工具[mitmproxy](https://github.com/mitmproxy/mitmproxy) 经过修改，重构实现_
 
 ## 快速上手
 
