@@ -13,6 +13,7 @@ from mitmproxy.addons import termlog
 from mitmproxy.addons import view
 from mitmproxy.addons import termstatus
 from mitmproxy.tools.web import app, webaddons, static_viewer
+import click
 
 
 class WebMaster(master.Master):
@@ -107,7 +108,7 @@ class WebMaster(master.Master):
         http_server = tornado.httpserver.HTTPServer(self.app)
         http_server.listen(self.options.web_port, self.options.web_host)
         web_url = f"http://{self.options.web_host}:{self.options.web_port}/"
-        self.log.info(
-            f"接口mock地址： {web_url}",
-        )
+
+        click.secho(f"接口mock地址： {web_url}", fg='green')
+
         self.run_loop(iol.start)

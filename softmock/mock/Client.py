@@ -4,14 +4,12 @@ import os
 import subprocess
 from mitmproxy.tools.main import run as mitmproxy_run
 from mitmproxy.tools import web, cmdline
+from softmock.database import database
 import sqlite3
 import click
 
 # 导入addons
 from .addons import Host
-
-current_path = os.path.abspath(os.path.dirname(__file__))
-database = os.path.join(current_path, "soft_mock.db")
 
 
 class Proxy:
@@ -114,7 +112,7 @@ class Proxy:
                       ['--host', self.host], extend_addons=addons)
         # 关闭浏览器代理
         self.browser_proxy_off()
-        click.secho(f'softmock已安全关闭', fg='#71b83f')
+        click.secho(f'softmock已安全关闭', fg='green')
         return None
 
     def run(self):

@@ -5,7 +5,7 @@ from mitmproxy import ctx
 import mitmproxy
 from urllib import parse
 from functools import wraps
-from softmock.mock.Client import database
+from softmock.database import database
 
 null = None
 false = False

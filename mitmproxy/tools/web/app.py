@@ -28,7 +28,7 @@ from mitmproxy import optmanager
 from mitmproxy import version
 from mitmproxy import ctx
 from .replay import proxy_req
-from softmock.mock.Client import database
+from softmock.database import database
 
 
 def flow_to_json(flow: mitmproxy.flow.Flow) -> dict:

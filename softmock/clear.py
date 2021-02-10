@@ -1,5 +1,5 @@
 import sqlite3
-from softmock.mock.Client import database
+from softmock.database import database
 
 
 def clear():
