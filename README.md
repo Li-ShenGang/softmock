@@ -6,17 +6,23 @@ softmock 是一个拦截 http/https 到本地的工具。
 
 请求拦截到本地之后，可以进行修改、新增等操作，使下次请求直接返回到本地的数据。而不依赖远程服务器。
 
-softmock 是从 抓包工具[mitmproxy](https://github.com/mitmproxy/mitmproxy) 经过改动，重构实现
+softmock 是从 抓包工具[mitmproxy](https://github.com/mitmproxy/mitmproxy) 经过修改，重构实现
 
 ## 快速上手
 
-### 1.安装
+### 1.安装准备
+
+在使用之前请先使 python 的版本至少为 python3.8
+
+[python 官网](https://python.org)
+
+### 2.安装
 
 ```
 pip install softmock
 ```
 
-### 2.使用
+### 3.使用
 
 #### 监听 host
 
