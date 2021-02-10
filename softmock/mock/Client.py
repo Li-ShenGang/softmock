@@ -5,17 +5,19 @@ import subprocess
 from mitmproxy.tools.main import run as mitmproxy_run
 from mitmproxy.tools import web, cmdline
 import sqlite3
+import click
 
 # 导入addons
 from .addons import Host
 
-here = os.path.abspath(os.path.dirname(__file__))
+current_path = os.path.abspath(os.path.dirname(__file__))
+database = os.path.join(current_path, "soft_mock.db")
 
 
 class Proxy:
     def __init__(self, host):
         self.host = host
-        self.conn = sqlite3.connect(os.path.join(here, "soft_mock.db"))
+        self.conn = sqlite3.connect(database)
         self.network_list = ['Wi-Fi', 'Ethernet']
         cursor = self.conn.cursor()
         try:
@@ -44,10 +46,19 @@ class Proxy:
         def set_key(name, value):
             _, reg_type = winreg.QueryValueEx(INTERNET_SETTINGS, name)
             winreg.SetValueEx(INTERNET_SETTINGS, name, 0, reg_type, value)
-        set_key('ProxyEnable', 1)
+        try:
+            set_key('ProxyEnable', 1)
+        except:
+            click.secho(f'ProxyEnable设置失败，和可能需要手动设置代理', fg='yellow')
         # Bypass the proxy for localhost
-        set_key('ProxyOverride', u'*.local;<local>')
-        set_key('ProxyServer', f'{proxy}:{port}')
+        try:
+            set_key('ProxyOverride', u'*.local;<local>')
+        except:
+            click.secho(f'ProxyOverride设置失败，和可能需要手动设置代理', fg='yellow')
+        try:
+            set_key('ProxyServer', f'{proxy}:{port}')
+        except:
+            click.secho(f'ProxyServer设置失败，和可能需要手动设置代理', fg='yellow')
 
     def close_windows(self):
         import winreg
@@ -57,19 +68,26 @@ class Proxy:
         def set_key(name, value):
             _, reg_type = winreg.QueryValueEx(INTERNET_SETTINGS, name)
             winreg.SetValueEx(INTERNET_SETTINGS, name, 0, reg_type, value)
-        set_key('ProxyEnable', 0)
-        set_key('ProxyServer', f'')
+        try:
+            set_key('ProxyEnable', 0)
+            set_key('ProxyServer', f'')
+        except:
+            pass
 
     def set_other_platform(self, proxy, port):
-        li = subprocess.getoutput(
-            'networksetup -listallnetworkservices').split('\n')
-        for net in li:
-            if len([i for i in self.network_list if i in net]):
-                # 设置http代理
-                os.system(f'networksetup -setwebproxy "{net}" {proxy} {port}')
-                # 设置https代理
-                os.system(
-                    f'networksetup -setsecurewebproxy "{net}" {proxy} {port}')
+        try:
+            li = subprocess.getoutput(
+                'networksetup -listallnetworkservices').split('\n')
+            for net in li:
+                if len([i for i in self.network_list if i in net]):
+                    # 设置http代理
+                    os.system(
+                        f'networksetup -setwebproxy "{net}" {proxy} {port}')
+                    # 设置https代理
+                    os.system(
+                        f'networksetup -setsecurewebproxy "{net}" {proxy} {port}')
+        except:
+            click.secho(f'auto-proxy 设置失败，和可能需要手动设置代理', fg='yellow')
 
     def close_other_platform(self):
         li = subprocess.getoutput(
@@ -96,6 +114,7 @@ class Proxy:
                       ['--host', self.host], extend_addons=addons)
         # 关闭浏览器代理
         self.browser_proxy_off()
+        click.secho(f'softmock已安全关闭', fg='#71b83f')
         return None
 
     def run(self):

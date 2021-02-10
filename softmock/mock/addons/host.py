@@ -5,6 +5,7 @@ from mitmproxy import ctx
 import mitmproxy
 from urllib import parse
 from functools import wraps
+from softmock.mock.Client import database
 
 null = None
 false = False
@@ -41,7 +42,7 @@ class Host:
         url = flow.request.scheme + '://' + \
             flow.request.host + \
             flow.request.path.split('?')[0] + ' ' + flow.request.method
-        db = sqlite3.connect("soft_mock.db")
+        db = sqlite3.connect(database)
         cursor = db.cursor()
         sql = f"select * from Mock1 where url='{url}' and status='1'"
         print(f'拦截{url}到本地')

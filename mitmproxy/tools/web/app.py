@@ -28,6 +28,7 @@ from mitmproxy import optmanager
 from mitmproxy import version
 from mitmproxy import ctx
 from .replay import proxy_req
+from softmock.mock.Client import database
 
 
 def flow_to_json(flow: mitmproxy.flow.Flow) -> dict:
@@ -291,7 +292,7 @@ class WebSocketEventBroadcaster(tornado.websocket.WebSocketHandler):
         is_update_request = False
         url = req['scheme'] + '://' + req['host'] + \
             req['path'].split('?')[0] + ' ' + req['method']
-        db = sqlite3.connect("soft_mock.db")
+        db = sqlite3.connect(database)
         cursor = db.cursor()
         sql = f"select count(*) from Mock1 where url='{url}'"
         if [i for i in cursor.execute(sql)][0][0]:  # 已经存在记录，更新记录
@@ -340,7 +341,7 @@ class ClientConnection(WebSocketEventBroadcaster):
 class Flows(RequestHandler):
     def get(self):
         # 获取历史记录
-        db = sqlite3.connect("soft_mock.db")
+        db = sqlite3.connect(database)
         cursor = db.cursor()
         sql = f"select * from Mock1 where url like '%{ctx.options.host}%'"
         result = [{**json.loads(parse.unquote(i[1]))['data'], "status": parse.unquote(i[3])}
@@ -379,7 +380,7 @@ class ClearAll(RequestHandler):
 
 class SOFTMOCK_ClearAll(RequestHandler):
     def post(self):
-        db = sqlite3.connect("soft_mock.db")
+        db = sqlite3.connect(database)
         cursor = db.cursor()
         sql = f"delete from Mock1 where url like '%{ctx.options.host}%'"
 
@@ -424,7 +425,7 @@ class DeleteFlow(RequestHandler):
         删除记录
         '''
         url = base64.b64decode(self.get_argument('url').encode()).decode()
-        db = sqlite3.connect("soft_mock.db")
+        db = sqlite3.connect(database)
         cursor = db.cursor()
         sql = f"delete from Mock1 where `url`='{url}'"
         cursor.execute(sql)
@@ -441,7 +442,7 @@ class CreateFlow(RequestHandler):
         '''
         url = base64.b64decode(self.get_argument('url').encode()).decode()
         detail = self.request.body.decode()
-        db = sqlite3.connect("soft_mock.db")
+        db = sqlite3.connect(database)
         cursor = db.cursor()
         sql = f"insert into Mock1 (`detail`, `status`, `url`) values (?, ?, ?)"
         cursor.execute(sql, (parse.quote(detail), '1', url))
@@ -460,7 +461,7 @@ class UpdateFlow(RequestHandler):
         status = self.get_argument('status')
         status = '1' if status == 'true' else status
         detail = self.request.body.decode()
-        db = sqlite3.connect("soft_mock.db")
+        db = sqlite3.connect(database)
         cursor = db.cursor()
         print('更新：'+url)
         sql = f"update Mock1 set `detail`='{parse.quote(detail)}', `status`='{status}' where `url`=?"
@@ -478,7 +479,7 @@ class UpdateStatus():
         '''
         url = base64.b64decode(self.get_argument('url').encode()).decode()
         status = self.get_argument('status')
-        db = sqlite3.connect("soft_mock.db")
+        db = sqlite3.connect(database)
         cursor = db.cursor()
         sql = f"update Mock1 set `status`='{status}' where url='{url}'"
         cursor.execute(sql)
@@ -577,7 +578,7 @@ class ReplayMe(RequestHandler):
     def post(self):
         url = base64.b64decode(self.get_argument('url').encode()).decode()
 
-        db = sqlite3.connect("soft_mock.db")
+        db = sqlite3.connect(database)
         cursor = db.cursor()
         sql = f"select `detail` from Mock1 where url='{url}'"
         js = [i for i in cursor.execute(sql)][0][0]

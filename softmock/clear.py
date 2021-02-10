@@ -1,8 +1,9 @@
 import sqlite3
+from softmock.mock.Client import database
 
 
 def clear():
-    db = sqlite3.connect("soft_mock.db")
+    db = sqlite3.connect(database)
     cursor = db.cursor()
     sql = "delete from Mock1"
 
