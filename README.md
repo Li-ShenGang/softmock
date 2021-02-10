@@ -52,7 +52,7 @@ softmock
 
 启动后，直接访问[http://mitm.it/](http://mitm.it/)来下载对应的证书并信任
 
-#### 4.其他命令
+### 4.其他命令
 
 - `softmock -v` 查看版本
 - `softmock --clear-all`清除数据库中所有的数据
