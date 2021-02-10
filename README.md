@@ -34,7 +34,7 @@ softmock --host httpbin.org
 
 这时会自动打开一个浏览器窗口，该窗口既是工作窗口
 
-可以通过访问监听的链接查看拦截情况。在浏览器访问`http://httpbin.org/ip`
+可以通过访问监听的链接查看拦截情况。在浏览器访问[http://httpbin.org/ip](http://httpbin.org/ip)
 
 可以看到左侧列表监听到了
 
@@ -50,4 +50,10 @@ softmock --host httpbin.org
 softmock
 ```
 
-启动后，直接访问`http://mitm.it/`来下载对应的证书并信任
+启动后，直接访问[http://mitm.it/](http://mitm.it/)来下载对应的证书并信任
+
+#### 4.其他命令
+
+- `softmock -v` 查看版本
+- `softmock --clear-all`清除数据库中所有的数据
+- `softmock --help`查看帮助
